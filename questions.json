@@ -1,0 +1,20 @@
+{
+  "questions": [
+    {"position": 0, "question": "Jaký je nejpopulárnější jazyk pro datovou vědu?", "answer": "PYTHON"},
+    {"position": 1, "question": "Co znamená HTML?", "answer": "HYPERTEXT MARKUP LANGUAGE"},
+    {"position": 2, "question": "Která barva se nazývá 'modrá' v anglickém RGB?", "answer": "BLUE"},
+    {"position": 3, "question": "Co je Git?", "answer": "VERZOVACI SYSTEM"},
+    {"position": 4, "question": "Jaké je logické AND v programování?", "answer": "AND"},
+    {"position": 5, "question": "Který jazyk vytváří web?", "answer": "JAVASCRIPT"},
+    {"position": 6, "question": "Co je databáze?", "answer": "ULOZISTE DAT"},
+    {"position": 7, "question": "Jak se jmenuje nejznámější vyhledávač?", "answer": "GOOGLE"},
+    {"position": 8, "question": "Jaký jazyk se používá na backendu?", "answer": "PYTHON"},
+    {"position": 9, "question": "Co je API?", "answer": "APLIKACNI ROZHRANI"},
+    {"position": 10, "question": "Jaké je nejznámější IDE pro Python?", "answer": "PYCHARM"},
+    {"position": 11, "question": "Co je responsive design?", "answer": "PRILANAVANI ROZLISENI"},
+    {"position": 12, "question": "Který protokol používá web?", "answer": "HTTP"},
+    {"position": 13, "question": "Co je CSS?", "answer": "KASKADOVE STYLY"},
+    {"position": 14, "question": "Jaká je nejstarší služba na Internetu?", "answer": "EMAIL"},
+    {"position": 15, "question": "Jak se jmenuje tvůrce JavaScriptu?", "answer": "BRENDAN EICH"}
+  ]
+}
