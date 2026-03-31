@@ -167,4 +167,4 @@ Vytvořeno pro projekt znalostní soutěže základních škol.
 
 ---
 
-**Dobré štěstí v soutěži!** 🏆
+**Hodně štěstí v soutěži!** 🏆
