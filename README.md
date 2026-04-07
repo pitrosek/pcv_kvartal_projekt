@@ -1,4 +1,4 @@
-# 🎮 Pexeso - Soutěžní Aplikace pro Znalostní Hry
+# 🎮 Soutěžní Aplikace pro Znalostní Hry
 
 Interaktivní aplikace pro znalostní soutěž základních škol. Soutěžící odhalují obrázek postupným otevíráním políček mřížky a pokoušejí se uhodnout tajenku.
 
