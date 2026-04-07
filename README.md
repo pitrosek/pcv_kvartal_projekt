@@ -1,4 +1,4 @@
-# 🎮 Soutěžní Aplikace pro Znalostní Hry
+# 🎮 Pexeso - Soutěžní Aplikace pro Znalostní Hry
 
 Interaktivní aplikace pro znalostní soutěž základních škol. Soutěžící odhalují obrázek postupným otevíráním políček mřížky a pokoušejí se uhodnout tajenku.
 
@@ -167,4 +167,4 @@ Vytvořeno pro projekt znalostní soutěže základních škol.
 
 ---
 
-**Hodně štěstí v soutěži!** 🏆
+**Dobré štěstí v soutěži!** 🏆

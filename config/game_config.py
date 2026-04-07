@@ -6,6 +6,12 @@ GAME_CONFIG = {
     "grid_size": 4,  # 4x4 grid
     "game_time_seconds": 600,  # 10 minut (600 sekund)
     "wrong_answer_penalty": 20,  # Trest za špatnou odpověď
+    "images": [  # Seznam obrázků k hře
+        "assets/1.jpg",
+        "assets/2.webp",
+        "assets/3.jpg",
+        "assets/4.webp",
+    ]
 }
 
 # Cena za odhalení políček

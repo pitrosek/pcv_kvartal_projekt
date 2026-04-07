@@ -83,7 +83,7 @@ class QuizApplication:
     def __init__(self, root):
         self.root = root
         self.root.title("Pexeso - IT Soutěžní Hra")
-        self.root.geometry("900x700")
+        self.root.geometry("900x800")
         self.root.config(bg=COLORS["bg_main"])
         
         self.game_state = GameState()
@@ -91,16 +91,19 @@ class QuizApplication:
         self.photo_tiles = {}
         self.questions = []  # Všechny otázky
         self.dialog_open = False  # Flag, aby se zabránil více dialogům
+        self.current_image_index = 0  # Index aktuálního obrázku
         
         # UI prvky
         self.timer_label = None
         self.points_label = None
         self.grid_buttons = []
+        self.guess_button = None  # Tlačítko na hádam finálního obrázku
+        self.guess_frame = None
         self.answer_entry = None
         
         self.setup_ui()
         self.load_questions()
-        self.load_image()
+        self.load_first_image()  # Načti první obrázek automaticky
         self.update_timer()
         
     def setup_ui(self):
@@ -169,18 +172,33 @@ class QuizApplication:
                 row_buttons.append(btn)
             self.grid_buttons.append(row_buttons)
         
+        # Frame pro guess tlačítko - pod mřížkou
+        self.guess_frame = tk.Frame(middle_frame, bg=COLORS["bg_main"])
+        self.guess_frame.pack(pady=10)
+        
+        self.guess_button = tk.Button(
+            self.guess_frame,
+            text="Hádat celý obrázek",
+            font=FONTS["medium"],
+            bg=COLORS["button_bg"],
+            fg=COLORS["fg_text"],
+            activebackground=COLORS["button_hover"],
+            command=self.show_guess_image_dialog_final
+        )
+        self.guess_button.pack(padx=10, pady=10)
+        
         # Dolní panel - Tlačítka
         bottom_panel = tk.Frame(self.root, bg=COLORS["bg_light"])
         bottom_panel.pack(fill=tk.X, padx=10, pady=10)
         
         load_btn = tk.Button(
             bottom_panel,
-            text="Načíst Obrázek",
+            text="Další Obrázek",
             font=FONTS["medium"],
             bg=COLORS["button_bg"],
             fg=COLORS["fg_text"],
             activebackground=COLORS["button_hover"],
-            command=self.load_image
+            command=self.load_next_image
         )
         load_btn.pack(side=tk.LEFT, padx=10, pady=10)
     
@@ -189,34 +207,68 @@ class QuizApplication:
         try:
             with open("questions.json", "r", encoding="utf-8") as f:
                 data = json.load(f)
-                self.questions = data.get("questions", [])
-                if len(self.questions) < 16:
-                    messagebox.showwarning("Pozor", f"V questions.json je jen {len(self.questions)} otázek, potřeba 16!")
+                all_questions = data.get("questions", [])
+                if len(all_questions) < 16:
+                    messagebox.showwarning("Pozor", f"V questions.json je jen {len(all_questions)} otázek, potřeba alespoň 64!")
         except FileNotFoundError:
             messagebox.showerror("Chyba", "Soubor questions.json nebyl nalezen!")
         except json.JSONDecodeError:
             messagebox.showerror("Chyba", "Chyba při čtení questions.json!")
     
-    def load_image(self):
-        """Načtení obrázku ze souboru"""
-        if not os.path.exists("assets"):
-            os.makedirs("assets")
-        
-        file_path = filedialog.askopenfilename(
-            title="Vyber obrázek",
-            initialdir="assets",
-            filetypes=[("Obrázky", "*.png *.jpg *.jpeg *.bmp"), ("Všechny soubory", "*.*")]
-        )
-        
-        if file_path:
-            try:
-                self.image_processor = ImageProcessor(file_path, self.game_state.grid_size)
-                self.game_state.reset()
-                self.photo_tiles = {}
-                self.update_ui()
-                messagebox.showinfo("Úspěch", "Obrázek načten! \n\nKlikej na políčka a odpovídej na IT otázky.\nPrvní správná odpověď = 100% bodů\nDruhá správná odpověď = 20% bodů")
-            except Exception as e:
-                messagebox.showerror("Chyba", str(e))
+    def update_questions_for_image(self):
+        """Aktualizace otázek pro aktuální obrázek"""
+        try:
+            with open("questions.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                all_questions = data.get("questions", [])
+                # Filtruj otázky pro aktuální obrázek podle image_id
+                self.questions = [q for q in all_questions if q.get("image_id") == self.current_image_index]
+                if len(self.questions) < 16:
+                    messagebox.showwarning("Pozor", f"Pro obrázek {self.current_image_index + 1} je jen {len(self.questions)} otázek, potřeba 16!")
+        except Exception as e:
+            messagebox.showerror("Chyba", f"Chyba při načítání otázek: {e}")
+    
+    def load_first_image(self):
+        """Načtení prvního obrázku ze seznamu"""
+        self.current_image_index = 0
+        self.update_questions_for_image()
+        self.load_current_image()
+    
+    def load_next_image(self):
+        """Načtení dalšího obrázku ze seznamu"""
+        images = GAME_CONFIG.get("images", [])
+        if self.current_image_index < len(images) - 1:
+            self.current_image_index += 1
+            self.update_questions_for_image()
+            self.load_current_image()
+        else:
+            messagebox.showinfo("Info", "To byl poslední obrázek!")
+    
+    def load_current_image(self):
+        """Načtení aktuálního obrázku z cesty v konfigu"""
+        images = GAME_CONFIG.get("images", [])
+        if self.current_image_index < len(images):
+            file_path = images[self.current_image_index]
+            if os.path.exists(file_path):
+                try:
+                    self.image_processor = ImageProcessor(file_path, self.game_state.grid_size)
+                    self.game_state.reset()
+                    self.photo_tiles = {}
+                    self.update_ui()
+                    messagebox.showinfo(
+                        "Úspěch",
+                        f"Obrázek {self.current_image_index + 1}/{len(images)} načten!\n\n"
+                        "Klikej na políčka a odpovídej na IT otázky.\n"
+                        "Správně odpověz NA OTÁZKU a HAD CO VIDÍŠ NA OBRÁZKU.\n"
+                        "Prvního správná odpověď = 100% bodů\n"
+                        "Druhou správná odpověď = 20% bodů"
+                    )
+                except Exception as e:
+                    messagebox.showerror("Chyba", f"Chyba při načítání obrázku: {e}")
+            else:
+                messagebox.showerror("Chyba", f"Obrázek nenalezen: {file_path}")
+        else:
+            messagebox.showerror("Chyba", "Žádný obrázek k dispozici!")
     
     def on_cell_click(self, cell_index):
         """Při kliknutí na políčko"""
@@ -256,7 +308,7 @@ class QuizApplication:
         # Dialog pro odpověď
         dialog = tk.Toplevel(self.root)
         dialog.title(f"Otázka na políčko {cell_index + 1}")
-        dialog.geometry("450x250")
+        dialog.geometry("500x300")
         dialog.config(bg=COLORS["bg_light"])
         dialog.resizable(False, False)
         
@@ -267,9 +319,28 @@ class QuizApplication:
             font=FONTS["medium"],
             bg=COLORS["bg_light"],
             fg=COLORS["fg_text"],
-            wraplength=420,
+            wraplength=450,
             justify=tk.CENTER
         ).pack(pady=20, padx=10)
+        
+        # Počet znaků v odpovědi
+        char_count_label = tk.Label(
+            dialog,
+            text=f"📋 Počet znaků: {len(correct_answer)}",
+            font=FONTS["small"],
+            bg=COLORS["bg_light"],
+            fg=COLORS["points_color"]
+        )
+        char_count_label.pack(pady=5)
+        
+        # Input field pro otázku
+        entry_question = tk.Entry(
+            dialog,
+            font=FONTS["medium"],
+            width=40
+        )
+        entry_question.pack(pady=15)
+        entry_question.focus()
         
         # Čítač pokusů
         attempt_label = tk.Label(
@@ -281,27 +352,21 @@ class QuizApplication:
         )
         attempt_label.pack(pady=5)
         
-        # Input field
-        entry = tk.Entry(
-            dialog,
-            font=FONTS["medium"],
-            width=35
-        )
-        entry.pack(pady=10)
-        entry.focus()
-        
         # Funkcí pro kontrolu odpovědi
         def check_answer():
-            user_answer = entry.get().upper().strip()
+            user_answer_question = entry_question.get().upper().strip()
             
-            if not user_answer:
+            if not user_answer_question:
                 messagebox.showwarning("Pozor", "Zadej odpověď!")
                 return
             
             self.game_state.cell_attempts[cell_index] += 1
             attempts = self.game_state.cell_attempts[cell_index]
             
-            if user_answer == correct_answer:
+            # Kontrola odpovědi na otázku
+            question_correct = user_answer_question == correct_answer
+            
+            if question_correct:
                 # SPRÁVNÁ ODPOVĚĎ
                 points = self.game_state.get_cell_points(cell_index)
                 self.game_state.points += points
@@ -310,9 +375,14 @@ class QuizApplication:
                 # Zpráva
                 attempt_text = "1. pokus" if attempts == 1 else f"{attempts}. pokus"
                 percent = "100%" if attempts == 1 else "20%"
-                msg = f"Odpověď: {correct_answer}\n\n{attempt_text} → +{points} bodů ({percent})\nCelkem: {self.game_state.points} bodů"
+                msg = (
+                    f"✓ Správně!\n\n"
+                    f"Odpověď: {correct_answer}\n\n"
+                    f"{attempt_text} → +{points} bodů ({percent})\n"
+                    f"Celkem: {self.game_state.points} bodů"
+                )
                 
-                # NEJDŮLEŽITĚJŠÍ: Aktualizuj UI IHNED
+                # Aktualizuj UI IHNED
                 self.update_ui()
                 
                 # Zavři dialog
@@ -322,7 +392,7 @@ class QuizApplication:
                 # Pak zobraz zprávu
                 messagebox.showinfo("Správně! ✓", msg)
                 
-                # Kontrola, zda jsou všechna políčka odhalena
+                # Kontrola, zda jsou všechna política odhalena
                 if len(self.game_state.revealed_cells) == self.game_state.total_cells:
                     messagebox.showinfo(
                         "Gratuluji!",
@@ -337,13 +407,13 @@ class QuizApplication:
                 # Aktualizuj body v hlavním okně
                 self.points_label.config(text=f"Body: {self.game_state.points}")
                 
-                # Ptej se znovu
+                # Feedback
                 attempt_label.config(
-                    text=f"Pokus číslo {attempts} → Špatně! -20 bodů\nZbývá: {self.game_state.points} bodů\n\nZkus to znovu...",
+                    text=f"Pokus číslo {attempts} → Špatně! -20 bodů\nSpráva odpověď: {correct_answer}\nZbývá: {self.game_state.points} bodů\n\nZkus to znovu...",
                     fg=COLORS["error_color"]
                 )
-                entry.delete(0, tk.END)
-                entry.focus()
+                entry_question.delete(0, tk.END)
+                entry_question.focus()
         
         # Tlačítko Odeslat
         tk.Button(
@@ -354,10 +424,157 @@ class QuizApplication:
             fg=COLORS["fg_text"],
             command=check_answer,
             padx=30
-        ).pack(pady=10)
+        ).pack(pady=15)
         
         # Pokud je Enter, odešli odpověď
-        entry.bind("<Return>", lambda e: check_answer())
+        entry_question.bind("<Return>", lambda e: check_answer())
+        
+        # Při zavření okna
+        def on_close():
+            dialog.destroy()
+            self.dialog_open = False
+        
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+        dialog.transient(self.root)
+    
+    def show_guess_image_dialog_final(self):
+        """Zobrazí dialog na hádam finálního obrázku"""
+        self.dialog_open = True
+        
+        # Zjisti správnou odpověď pro aktuální obrázek
+        all_answers = ["BILL GATES", "MARK ZUCKERBERG", "CHATGPT", "GRAFICKA KARTA"]
+        correct_answer = all_answers[self.current_image_index] if self.current_image_index < len(all_answers) else ""
+        
+        # Dialog pro hádam
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Hádat obrázek #{self.current_image_index + 1}")
+        dialog.geometry("500x450")
+        dialog.config(bg=COLORS["bg_light"])
+        dialog.resizable(False, False)
+        
+        # Label
+        tk.Label(
+            dialog,
+            text="Co vidíš na obrázku?\n(Vidíš jen odhalená políčka)",
+            font=FONTS["medium"],
+            bg=COLORS["bg_light"],
+            fg=COLORS["fg_text"]
+        ).pack(pady=15)
+        
+        # Frame na náhled - jen odhalená políčka
+        image_frame = tk.Frame(dialog, bg=COLORS["bg_main"], relief=tk.SUNKEN, bd=2)
+        image_frame.pack(pady=10)
+        
+        # Vykresli jen odhalená políčka
+        tiles_frame = tk.Frame(image_frame, bg=COLORS["bg_main"])
+        tiles_frame.pack(padx=5, pady=5)
+        
+        if self.image_processor:
+            for i in range(self.game_state.grid_size):
+                for j in range(self.game_state.grid_size):
+                    cell_index = i * self.game_state.grid_size + j
+                    
+                    if cell_index in self.game_state.revealed_cells:
+                        # Zobraz odhalené politčko
+                        tile = self.image_processor.get_tile(cell_index)
+                        if tile:
+                            resized_tile = tile.resize((70, 70), Image.Resampling.LANCZOS)
+                            photo = ImageTk.PhotoImage(resized_tile)
+                            label = tk.Label(tiles_frame, image=photo, bg=COLORS["bg_main"])
+                            label.image = photo
+                            label.grid(row=i, column=j, padx=2, pady=2)
+                    else:
+                        # Prázdné místo za neodhalené politčko
+                        empty_label = tk.Label(
+                            tiles_frame,
+                            text="?",
+                            width=8,
+                            height=3,
+                            bg=COLORS["button_bg"],
+                            fg=COLORS["fg_text"],
+                            font=FONTS["small"]
+                        )
+                        empty_label.grid(row=i, column=j, padx=2, pady=2)
+        
+        # Label s počtem odhalených
+        revealed_count = len(self.game_state.revealed_cells)
+        total_count = self.game_state.total_cells
+        info_label = tk.Label(
+            dialog,
+            text=f"Odhaleno {revealed_count}/{total_count} politček",
+            font=FONTS["small"],
+            bg=COLORS["bg_light"],
+            fg=COLORS["points_color"]
+        )
+        info_label.pack(pady=5)
+        
+        # Input field
+        entry = tk.Entry(
+            dialog,
+            font=FONTS["medium"],
+            width=40
+        )
+        entry.pack(pady=15)
+        entry.focus()
+        
+        # Feedback label
+        feedback_label = tk.Label(
+            dialog,
+            text="",
+            font=FONTS["small"],
+            bg=COLORS["bg_light"],
+            fg=COLORS["points_color"]
+        )
+        feedback_label.pack(pady=5)
+        
+        # Funkcí pro kontrolu odpovědi
+        def check_final_guess():
+            user_answer = entry.get().upper().strip()
+            
+            if not user_answer:
+                messagebox.showwarning("Pozor", "Zadej odpověď!")
+                return
+            
+            # Kontrola s částečnou shodou
+            if user_answer in correct_answer or correct_answer in user_answer:
+                # SPRÁVNÉ HÁDAM
+                msg = (
+                    f"✓ Správně!\n\n"
+                    f"Obrázek: {correct_answer}\n\n"
+                    f"Gratuluji za správné hádání!"
+                )
+                
+                # Zavři dialog
+                dialog.destroy()
+                self.dialog_open = False
+                
+                # Zpráva
+                messagebox.showinfo("Správně! ✓", msg)
+                
+                # Přesun na další obrázek
+                self.load_next_image()
+            else:
+                # ŠPATNÉ HÁDAM
+                feedback_label.config(
+                    text=f"Nesprávně! Zkus znovu...",
+                    fg=COLORS["error_color"]
+                )
+                entry.delete(0, tk.END)
+                entry.focus()
+        
+        # Tlačítko Hádat
+        tk.Button(
+            dialog,
+            text="Hádat",
+            font=FONTS["medium"],
+            bg=COLORS["button_bg"],
+            fg=COLORS["fg_text"],
+            command=check_final_guess,
+            padx=30
+        ).pack(pady=10)
+        
+        # Enter
+        entry.bind("<Return>", lambda e: check_final_guess())
         
         # Při zavření okna
         def on_close():
@@ -383,10 +600,7 @@ class QuizApplication:
                     if self.image_processor:
                         tile = self.image_processor.get_tile(cell_index)
                         if tile:
-                            # Resize tile, aby mělo stejnou velikost jako tlačítko s textem
                             resized_tile = tile.resize((140, 140), Image.Resampling.LANCZOS)
-                            
-                            # Vždy vytvořit nový PhotoImage (refresh)
                             photo = ImageTk.PhotoImage(resized_tile)
                             self.photo_tiles[cell_index] = photo
                             
@@ -399,7 +613,7 @@ class QuizApplication:
                                 width=0,
                                 height=0
                             )
-                            btn.image = photo  # Udržuj referenci!
+                            btn.image = photo
                 else:
                     btn.config(
                         text="?",
@@ -409,6 +623,9 @@ class QuizApplication:
                         width=12,
                         height=6
                     )
+        
+        # Tlačítko "Hádat" je vždy aktivní
+        self.guess_button.config(state=tk.NORMAL)
         
         # Vynutí refresh UI
         self.root.update_idletasks()
